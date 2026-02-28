@@ -472,3 +472,47 @@
   .cards{ grid-template-columns:1fr 1fr; }
   .impactGrid{ grid-template-columns:1fr; }
 }
+
+.delta {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #dfe7df;
+}
+
+.deltaRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  color: #4a5a4a;
+}
+
+.deltaHint {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #2e6b2e;
+}
+
+.toggleRow {
+  display: flex;
+  gap: 10px;
+  margin: 12px 0 18px;
+}
+
+.toggleBtn {
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid #d7e6d7;
+  background: #fff;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.toggleBtn.active {
+  background: #eaf5ea;
+  border-color: #9ccc9c;
+  font-weight: 600;
+}
+
+/* optional */
+.sub b { font-weight: 700; }

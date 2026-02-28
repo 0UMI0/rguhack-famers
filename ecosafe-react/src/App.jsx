@@ -34,8 +34,16 @@ function ScrollToTop() {
 export default function App() {
   // Shared app state
   const [distance, setDistance] = useState("5");
-  const [modes, setModes] = useState({ car: true, bus: true, bike: true, walk: true });
+  const [modes, setModes] = useState({
+    car: true,
+    bus: true,
+    bike: true,
+    walk: true,
+  });
   const [results, setResults] = useState([]);
+
+  // Preference decides what "Best" means
+  const [preference, setPreference] = useState("green"); // "fast" | "green" | "health"
 
   const selectedModes = useMemo(
     () => Object.entries(modes).filter(([, v]) => v).map(([k]) => k),
@@ -63,14 +71,25 @@ export default function App() {
     return { ok: true };
   };
 
+  // ✅ TWEAK 2: Greenest tie-breaker = FASTEST (not highest kcal)
   const best = useMemo(() => {
     if (!results.length) return null;
+
+    if (preference === "fast") {
+      return results.reduce((a, b) => (b.timeMin < a.timeMin ? b : a), results[0]);
+    }
+
+    if (preference === "health") {
+      return results.reduce((a, b) => (b.kcal > a.kcal ? b : a), results[0]);
+    }
+
+    // greenest (lowest CO2; tie-breaker: fastest time)
     return results.reduce((a, b) => {
       if (b.co2Kg < a.co2Kg) return b;
-      if (b.co2Kg === a.co2Kg && b.kcal > a.kcal) return b;
+      if (b.co2Kg === a.co2Kg && b.timeMin < a.timeMin) return b;
       return a;
     }, results[0]);
-  }, [results]);
+  }, [results, preference]);
 
   const impact = useMemo(() => {
     if (!results.length) return null;
@@ -80,7 +99,9 @@ export default function App() {
 
     const saved = car ? Math.max(0, car.co2Kg - bestAlt.co2Kg) : 0;
     const trees = saved > 0 ? Math.max(1, Math.round(saved / 2)) : 0;
-    const totalKcal = results.reduce((s, r) => s + r.kcal, 0);
+
+    // Calories should reflect ONE selected/best option, not sum of all modes
+    const totalKcal = best ? best.kcal : 0;
 
     const avgCo2 = results.reduce((s, r) => s + r.co2Kg, 0) / results.length;
     const score = clamp(Math.round(100 - avgCo2 * 18), 0, 100);
@@ -95,7 +116,7 @@ export default function App() {
           ? `Choose ${LABEL[bestAlt.mode]} for this route to reduce CO₂ and improve health.`
           : `Try Bus/Bike/Walk where possible to reduce CO₂.`,
     };
-  }, [results]);
+  }, [results, best]);
 
   return (
     <>
@@ -125,14 +146,13 @@ export default function App() {
               <ResultsPage
                 results={results}
                 best={best}
+                preference={preference}
+                setPreference={setPreference}
               />
             }
           />
 
-          <Route
-            path="/impact"
-            element={<ImpactPage impact={impact} />}
-          />
+          <Route path="/impact" element={<ImpactPage impact={impact} />} />
 
           <Route path="*" element={<Navigate to="/plan" replace />} />
         </Routes>
