@@ -39,21 +39,88 @@ export default function App() {
 
   const selectMode = (m) => setMode(m);
 
+  const UI_MODE = {
+    driving: { label: "Car", emoji: "🚗", co2KgPerKm: 0.171, kcalPerMin: 0 },
+    transit: { label: "Transit", emoji: "🚌", co2KgPerKm: 0.089, kcalPerMin: 0 },
+    bicycling: { label: "Bike", emoji: "🚴", co2KgPerKm: 0, kcalPerMin: 8 },
+    walking: { label: "Walk", emoji: "🚶", co2KgPerKm: 0, kcalPerMin: 5 },
+  };
+
+// "12.3 km" -> 12.3, "800 m" -> 0.8
+  function parseKm(distanceText) {
+    const t = (distanceText || "").toLowerCase().trim();
+    if (t.endsWith("km")) return Number.parseFloat(t);
+    if (t.endsWith("m")) return Number.parseFloat(t) / 1000;
+    return NaN;
+  }
+
+// "1 hour 10 mins" -> 70, "15 mins" -> 15
+  function parseMinutes(durationText) {
+    const t = (durationText || "").toLowerCase();
+    let mins = 0;
+    const h = t.match(/(\d+)\s*hour/);
+    const m = t.match(/(\d+)\s*min/);
+    if (h) mins += Number.parseInt(h[1], 10) * 60;
+    if (m) mins += Number.parseInt(m[1], 10);
+    return mins;
+  }
+
   const computeResults = async () => {
-    const params = new URLSearchParams({ origin, destination, mode });
+    if (!origin.trim() || !destination.trim()) {
+      return { ok: false, msg: "Please enter both start and end locations." };
+    }
 
-    const res = await fetch(`/directions?${params.toString()}`);
-    console.log("fetch status:", res.status, res.url);
+    const modes = ["driving", "transit", "bicycling", "walking"];
 
-    const data = await res.json();
-    console.log("fetch data:", data);
+    try {
+      const responses = await Promise.all(
+          modes.map(async (m) => {
+            const params = new URLSearchParams({ origin, destination, mode: m });
+            const res = await fetch(`/directions?${params.toString()}`);
+            const data = await res.json();
 
-    if (!res.ok) return { ok: false, msg: data?.error || "Backend error" };
+            // If one mode fails (e.g., transit not available), return a structured failure for that mode
+            if (!res.ok) {
+              return { mode: m, ok: false, error: data?.error || "No route found" };
+            }
 
-    setResults([{ mode, ...data }]);
-    return { ok: true };
+            const km = parseKm(data.distanceText);
+            const timeMin = parseMinutes(data.durationText);
+
+            const meta = UI_MODE[m];
+            const co2Kg = Number.isFinite(km) ? +(km * meta.co2KgPerKm).toFixed(2) : 0;
+            const kcal = timeMin ? Math.round(timeMin * meta.kcalPerMin) : 0;
+
+            return {
+              mode: m,
+              ok: true,
+              distanceText: data.distanceText,
+              durationText: data.durationText,
+              startAddress: data.startAddress,
+              endAddress: data.endAddress,
+              timeMin,
+              co2Kg,
+              kcal,
+            };
+          })
+      );
+
+      const successful = responses.filter((r) => r.ok);
+      if (successful.length === 0) {
+        // show first failure message
+        const firstErr = responses.find((r) => !r.ok);
+        return { ok: false, msg: firstErr?.error || "No routes found." };
+      }
+
+      setResults(successful);
+
+      return { ok: true };
+    } catch {
+      return { ok: false, msg: "Could not reach the server. Is Express running?" };
+    }
   };
   return (
+
     <>
       <Navbar />
       <ScrollToTop />
