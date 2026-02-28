@@ -44,4 +44,5 @@ app.get('/directions', async (req, res) => {
     }
 })
 
+//http://localhost:3000/directions?origin=Aberdeen&destination=Edinburgh&travel_mode=driving
 app.listen(3000, () => console.log('Server running on port 3000'))
