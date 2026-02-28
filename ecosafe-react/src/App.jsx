@@ -16,11 +16,7 @@ import PlanPage from "./pages/PlanPage";
 import ResultsPage from "./pages/ResultsPage";
 import ImpactPage from "./pages/ImpactPage";
 
-const SPEED = { car: 40, bus: 30, bike: 15, walk: 5 }; // km/h
-const CO2 = { car: 0.12, bus: 0.08, bike: 0.0, walk: 0.0 }; // kg/km
-const KCAL = { car: 0, bus: 0, bike: 30, walk: 50 }; // kcal/km
-
-const LABEL = { car: "Car", bus: "Bus", bike: "Bike", walk: "Walk" };
+const LABEL = { car: "Car", transit: "Transit", bike: "Bike", walk: "Walk" };
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
 function ScrollToTop() {

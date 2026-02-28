@@ -2,27 +2,21 @@ import { motion } from "framer-motion";
 
 const MODE_META = {
   car: { label: "Car", emoji: "🚗" },
-  bus: { label: "Bus", emoji: "🚌" },
+  bus: { label: "Transit", emoji: "🚌" },
   bike: { label: "Bike", emoji: "🚴‍♀️" },
   walk: { label: "Walk", emoji: "🚶‍♀️" },
 };
 
 export default function JourneyForm({
-  distance,
-  setDistance,
+  start,
+  end,
   modes,
   toggleMode,
   onCompare,
 }) {
   const selectedCount = Object.values(modes).filter(Boolean).length;
 
-  const handleDistanceChange = (e) => {
-    // Allow only digits + decimal point
-    const v = e.target.value.replace(/[^0-9.]/g, "");
-    // Prevent multiple dots
-    const cleaned = v.split(".").slice(0, 2).join(".");
-    setDistance(cleaned);
-  };
+
 
   return (
     <motion.section
@@ -33,19 +27,30 @@ export default function JourneyForm({
       transition={{ duration: 0.35, ease: "easeOut" }}
     >
       <h2 style={{ margin: 0 }}>Plan your journey</h2>
-      <div className="sub">Mock calculations for now (backend can plug in later).</div>
+      <div className="sub">Select two locations</div>
 
-      <label className="lbl" htmlFor="distance">
-        Distance (km)
+      <label className="lbl" htmlFor="start">
+        Start Location
       </label>
       <input
-        id="distance"
+        id="start"
         className="input"
-        inputMode="decimal"
-        placeholder="e.g. 5"
-        value={distance}
-        onChange={handleDistanceChange}
+        inputMode="text"
+        placeholder="Aberdeen"
+        value={start}
       />
+
+      <label className="lbl" htmlFor="end">
+        End Location
+      </label>
+      <input
+          id="end"
+          className="input"
+          inputMode="text"
+          placeholder="Edinburgh"
+          value={end}
+      />
+
 
       <div className="lbl" style={{ marginTop: 14 }}>
         Transport options{" "}

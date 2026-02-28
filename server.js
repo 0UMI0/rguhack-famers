@@ -12,8 +12,8 @@ const allowedModes = new Set(['driving', 'walking', 'bicycling', 'transit'])
 
 app.get('/directions', async (req, res) => {
     try {
-        const origin = req.query.origin
-        const destination = req.query.destination
+        const origin = req.query.origin || 'aberdeen'
+        const destination = req.query.destination || 'edinburgh'
         const travel_mode = req.query.mode
 
         const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&mode=${encodeURIComponent(travel_mode)}&key=${API_KEY}`
