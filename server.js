@@ -22,6 +22,7 @@ app.get('/directions', async (req, res) => {
         const data = await response.json()
 
         res.json(data)
+        console.log(data.routes[0].legs[0].distance.value)
     } catch (error) {
         console.error(error)
         res.status(500).json({ error: 'Something went wrong' })
