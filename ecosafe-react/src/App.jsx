@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import "./App.css";
 
 import {
@@ -8,14 +9,12 @@ import {
   LinearScale,
   Tooltip,
 } from "chart.js";
-
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip);
 
 import Navbar from "./components/Navbar";
-import Hero from "./components/Hero";
-import JourneyForm from "./components/JourneyForm";
-import Results from "./components/Results";
-import Impact from "./components/Impact";
+import PlanPage from "./pages/PlanPage";
+import ResultsPage from "./pages/ResultsPage";
+import ImpactPage from "./pages/ImpactPage";
 
 const SPEED = { car: 40, bus: 30, bike: 15, walk: 5 }; // km/h
 const CO2 = { car: 0.12, bus: 0.08, bike: 0.0, walk: 0.0 }; // kg/km
@@ -24,7 +23,16 @@ const KCAL = { car: 0, bus: 0, bike: 30, walk: 50 }; // kcal/km
 const LABEL = { car: "Car", bus: "Bus", bike: "Bike", walk: "Walk" };
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [pathname]);
+  return null;
+}
+
 export default function App() {
+  // Shared app state
   const [distance, setDistance] = useState("5");
   const [modes, setModes] = useState({ car: true, bus: true, bike: true, walk: true });
   const [results, setResults] = useState([]);
@@ -36,10 +44,10 @@ export default function App() {
 
   const toggleMode = (m) => setModes((p) => ({ ...p, [m]: !p[m] }));
 
-  const onCompare = () => {
+  const computeResults = () => {
     const km = parseFloat(distance);
-    if (!km || km <= 0) return alert("Enter a distance in km (e.g. 5).");
-    if (selectedModes.length === 0) return alert("Select at least one option.");
+    if (!km || km <= 0) return { ok: false, msg: "Enter a distance in km (e.g. 5)." };
+    if (selectedModes.length === 0) return { ok: false, msg: "Select at least one option." };
 
     const next = selectedModes.map((mode) => {
       const timeMin = (km / SPEED[mode]) * 60;
@@ -52,6 +60,7 @@ export default function App() {
     });
 
     setResults(next);
+    return { ok: true };
   };
 
   const best = useMemo(() => {
@@ -91,19 +100,42 @@ export default function App() {
   return (
     <>
       <Navbar />
+      <ScrollToTop />
+
       <main className="wrap">
-        <Hero />
-        <section className="grid">
-          <JourneyForm
-            distance={distance}
-            setDistance={setDistance}
-            modes={modes}
-            toggleMode={toggleMode}
-            onCompare={onCompare}
+        <Routes>
+          <Route path="/" element={<Navigate to="/plan" replace />} />
+
+          <Route
+            path="/plan"
+            element={
+              <PlanPage
+                distance={distance}
+                setDistance={setDistance}
+                modes={modes}
+                toggleMode={toggleMode}
+                computeResults={computeResults}
+              />
+            }
           />
-          <Results results={results} best={best} />
-        </section>
-        <Impact impact={impact} />
+
+          <Route
+            path="/results"
+            element={
+              <ResultsPage
+                results={results}
+                best={best}
+              />
+            }
+          />
+
+          <Route
+            path="/impact"
+            element={<ImpactPage impact={impact} />}
+          />
+
+          <Route path="*" element={<Navigate to="/plan" replace />} />
+        </Routes>
       </main>
     </>
   );

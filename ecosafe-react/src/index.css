@@ -9,12 +9,13 @@
   --radius:16px;
 }
 
-*{
-  box-sizing:border-box;
-}
+*{ box-sizing:border-box; }
 
-html, body{
-  height:100%;
+html, body{ height:100%; }
+
+/* Smooth scroll */
+html{
+  scroll-behavior: smooth;
 }
 
 body{
@@ -27,10 +28,5 @@ body{
     linear-gradient(180deg, #f7faf7, #f2f6f2);
 }
 
-a{
-  color:inherit;
-}
-
-button{
-  font-family: inherit;
-}
+a{ color:inherit; }
+button{ font-family: inherit; }

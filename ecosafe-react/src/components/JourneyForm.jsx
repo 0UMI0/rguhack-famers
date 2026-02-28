@@ -1,58 +1,85 @@
 import { motion } from "framer-motion";
 
-const LABEL = { car: "Car", bus: "Bus", bike: "Bike", walk: "Walk" };
-const EMOJI = { car: "🚗", bus: "🚌", bike: "🚴", walk: "🚶" };
+const MODE_META = {
+  car: { label: "Car", emoji: "🚗" },
+  bus: { label: "Bus", emoji: "🚌" },
+  bike: { label: "Bike", emoji: "🚴‍♀️" },
+  walk: { label: "Walk", emoji: "🚶‍♀️" },
+};
 
-export default function JourneyForm({ distance, setDistance, modes, toggleMode, onCompare }) {
+export default function JourneyForm({
+  distance,
+  setDistance,
+  modes,
+  toggleMode,
+  onCompare,
+}) {
+  const selectedCount = Object.values(modes).filter(Boolean).length;
+
+  const handleDistanceChange = (e) => {
+    // Allow only digits + decimal point
+    const v = e.target.value.replace(/[^0-9.]/g, "");
+    // Prevent multiple dots
+    const cleaned = v.split(".").slice(0, 2).join(".");
+    setDistance(cleaned);
+  };
+
   return (
-    <motion.div
-      className="card"
+    <motion.section
+      className="card planCard"
       id="plan"
-      initial={{ opacity: 0, y: 18 }}
+      initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: "easeOut", delay: 0.05 }}
+      transition={{ duration: 0.35, ease: "easeOut" }}
     >
-      <h2>Plan your journey</h2>
+      <h2 style={{ margin: 0 }}>Plan your journey</h2>
       <div className="sub">Mock calculations for now (backend can plug in later).</div>
 
-      <label className="lbl">Distance (km)</label>
+      <label className="lbl" htmlFor="distance">
+        Distance (km)
+      </label>
       <input
+        id="distance"
         className="input"
-        type="number"
-        min="0"
-        step="0.1"
-        value={distance}
-        onChange={(e) => setDistance(e.target.value)}
+        inputMode="decimal"
         placeholder="e.g. 5"
+        value={distance}
+        onChange={handleDistanceChange}
       />
 
-      <label className="lbl">Transport options</label>
-      <div className="modes">
-        {["car", "bus", "bike", "walk"].map((m) => (
-          <motion.button
-            key={m}
-            type="button"
-            className={`chip ${modes[m] ? "active" : ""}`}
-            onClick={() => toggleMode(m)}
-            whileHover={{ y: -2 }}
-            whileTap={{ scale: 0.98 }}
-            transition={{ type: "spring", stiffness: 500, damping: 30 }}
-          >
-            <span className="ico">{EMOJI[m]}</span>
-            {LABEL[m]}
-          </motion.button>
-        ))}
+      <div className="lbl" style={{ marginTop: 14 }}>
+        Transport options{" "}
+        <span style={{ color: "var(--muted)", fontWeight: 800 }}>
+          ({selectedCount} selected)
+        </span>
       </div>
 
-      <motion.button
-        className="btn"
-        onClick={onCompare}
-        whileHover={{ y: -2 }}
-        whileTap={{ scale: 0.98 }}
-        transition={{ type: "spring", stiffness: 400, damping: 28 }}
-      >
+      <div className="modes" role="group" aria-label="Transport modes">
+        {Object.keys(MODE_META).map((key) => {
+          const active = !!modes[key];
+          return (
+            <button
+              key={key}
+              type="button"
+              className={`chip ${active ? "active" : ""}`}
+              onClick={() => toggleMode(key)}
+              aria-pressed={active}
+              title={MODE_META[key].label}
+            >
+              <span aria-hidden="true">{MODE_META[key].emoji}</span>
+              <span>{MODE_META[key].label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <button type="button" className="btn" onClick={onCompare}>
         Compare options
-      </motion.button>
-    </motion.div>
+      </button>
+
+      <div className="sub" style={{ marginTop: 12 }}>
+        Tip: choose walking/cycling for <b>0 CO₂</b> and more calories burned.
+      </div>
+    </motion.section>
   );
 }
