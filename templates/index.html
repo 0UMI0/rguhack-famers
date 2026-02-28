@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RGU Hack 26 – Team Famers</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+    <header>
+        <h1>RGU Hack 26 🎉</h1>
+        <p class="subtitle">Team Famers</p>
+    </header>
+
+    <main>
+        <section class="card">
+            <h2>Welcome</h2>
+            <p>This is our hackathon project. Use the form below to try out the echo API.</p>
+        </section>
+
+        <section class="card">
+            <h2>Echo API</h2>
+            <form id="echo-form">
+                <label for="message">Message</label>
+                <input type="text" id="message" name="message" placeholder="Type something…" required />
+                <button type="submit">Send</button>
+            </form>
+            <div id="response" class="response hidden"></div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Built at RGU Hack 26 by Team Famers</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
