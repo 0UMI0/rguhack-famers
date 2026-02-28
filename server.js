@@ -15,7 +15,7 @@ app.get('/directions', async (req, res) => {
     try {
         const origin = (req.query.origin || '').trim()
         const destination = (req.query.destination || '').trim()
-        const mode = allowedModes.has(req.query.mode) ? req.query.mode : 'walking'
+        const mode = allowedModes.has(req.query.mode) ? req.query.mode : 'driving'
 
         if (!origin || !destination) {
             return res.status(400).json({ error: 'origin and destination are required' })

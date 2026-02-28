@@ -1,35 +1,55 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Hero from "../components/Hero";
 import JourneyForm from "../components/JourneyForm";
 
-export default function PlanPage({ distance, setDistance, modes, toggleMode, computeResults }) {
+export default function PlanPage({
+                                   origin,
+                                   setOrigin,
+                                   destination,
+                                   setDestination,
+                                   mode,
+                                   selectMode,
+                                   computeResults
+                                 }) {
   const navigate = useNavigate();
+  const [error, setError] = useState("");
 
-  const onCompare = () => {
-    const res = computeResults();
-    if (!res.ok) return alert(res.msg);
+  const onCompare = async () => {
+    setError("");
+    const r = await computeResults();
+
+    if (!r.ok) {
+      setError(r.msg);
+      return;
+    }
+
     navigate("/results");
   };
 
   return (
-    <>
-      <Hero />
-      <section className="grid">
-        <JourneyForm
-          distance={distance}
-          setDistance={setDistance}
-          modes={modes}
-          toggleMode={toggleMode}
-          onCompare={onCompare}
-        />
-        <div className="card resultsHint">
-          <h2>Ready to compare?</h2>
-          <div className="sub">
-            Enter distance, choose transport options, then click <b>Compare options</b>.
-            You’ll be taken to the Results page.
+      <>
+        <Hero />
+        <section className="grid">
+          <JourneyForm
+              start={origin}
+              setStart={setOrigin}
+              end={destination}
+              setEnd={setDestination}
+              mode={mode}
+              selectMode={selectMode}
+              onCompare={onCompare}
+              error={error}
+          />
+
+          <div className="card resultsHint">
+            <h2>Ready to compare?</h2>
+            <div className="sub">
+              Enter start and end locations, choose a travel mode, then click{" "}
+              <b>Compare options</b>.
+            </div>
           </div>
-        </div>
-      </section>
-    </>
+        </section>
+      </>
   );
 }

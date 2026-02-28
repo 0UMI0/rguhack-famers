@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import {useState, useEffect } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import "./App.css";
 
@@ -14,10 +14,8 @@ ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip);
 import Navbar from "./components/Navbar";
 import PlanPage from "./pages/PlanPage";
 import ResultsPage from "./pages/ResultsPage";
-import ImpactPage from "./pages/ImpactPage";
 
-const LABEL = { car: "Car", transit: "Transit", bike: "Bike", walk: "Walk" };
-const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+const LABEL = { driving: "Car", transit: "Transit", bicycling: "Bike", walking: "Walk" };
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -29,70 +27,32 @@ function ScrollToTop() {
 
 export default function App() {
   // Shared app state
-  const [distance, setDistance] = useState("5");
-  const [modes, setModes] = useState({ car: true, bus: true, bike: true, walk: true });
+  const [origin, setOrigin] = useState("Robert Gordon University");
+  const [destination, setDestination] = useState("Union Street, Aberdeen");
+
+  const [mode, setMode] = useState("driving");
+
   const [results, setResults] = useState([]);
+ // const [error, setError] = useState("");
 
-  const selectedModes = useMemo(
-    () => Object.entries(modes).filter(([, v]) => v).map(([k]) => k),
-    [modes]
-  );
 
-  const toggleMode = (m) => setModes((p) => ({ ...p, [m]: !p[m] }));
 
-  const computeResults = () => {
-    const km = parseFloat(distance);
-    if (!km || km <= 0) return { ok: false, msg: "Enter a distance in km (e.g. 5)." };
-    if (selectedModes.length === 0) return { ok: false, msg: "Select at least one option." };
+  const selectMode = (m) => setMode(m);
 
-    const next = selectedModes.map((mode) => {
-      const timeMin = (km / SPEED[mode]) * 60;
-      return {
-        mode,
-        timeMin: Math.round(timeMin),
-        co2Kg: +(km * CO2[mode]).toFixed(1),
-        kcal: Math.round(km * KCAL[mode]),
-      };
-    });
+  const computeResults = async () => {
+    const params = new URLSearchParams({ origin, destination, mode });
 
-    setResults(next);
+    const res = await fetch(`/directions?${params.toString()}`);
+    console.log("fetch status:", res.status, res.url);
+
+    const data = await res.json();
+    console.log("fetch data:", data);
+
+    if (!res.ok) return { ok: false, msg: data?.error || "Backend error" };
+
+    setResults([{ mode, ...data }]);
     return { ok: true };
   };
-
-  const best = useMemo(() => {
-    if (!results.length) return null;
-    return results.reduce((a, b) => {
-      if (b.co2Kg < a.co2Kg) return b;
-      if (b.co2Kg === a.co2Kg && b.kcal > a.kcal) return b;
-      return a;
-    }, results[0]);
-  }, [results]);
-
-  const impact = useMemo(() => {
-    if (!results.length) return null;
-
-    const car = results.find((r) => r.mode === "car");
-    const bestAlt = results.reduce((a, b) => (b.co2Kg < a.co2Kg ? b : a), results[0]);
-
-    const saved = car ? Math.max(0, car.co2Kg - bestAlt.co2Kg) : 0;
-    const trees = saved > 0 ? Math.max(1, Math.round(saved / 2)) : 0;
-    const totalKcal = results.reduce((s, r) => s + r.kcal, 0);
-
-    const avgCo2 = results.reduce((s, r) => s + r.co2Kg, 0) / results.length;
-    const score = clamp(Math.round(100 - avgCo2 * 18), 0, 100);
-
-    return {
-      saved: +saved.toFixed(1),
-      treesText: trees ? `${trees} trees` : "—",
-      totalKcal,
-      score,
-      rec:
-        bestAlt.mode !== "car"
-          ? `Choose ${LABEL[bestAlt.mode]} for this route to reduce CO₂ and improve health.`
-          : `Try Bus/Bike/Walk where possible to reduce CO₂.`,
-    };
-  }, [results]);
-
   return (
     <>
       <Navbar />
@@ -103,34 +63,22 @@ export default function App() {
           <Route path="/" element={<Navigate to="/plan" replace />} />
 
           <Route
-            path="/plan"
-            element={
-              <PlanPage
-                distance={distance}
-                setDistance={setDistance}
-                modes={modes}
-                toggleMode={toggleMode}
-                computeResults={computeResults}
-              />
-            }
+              path="/plan"
+              element={
+                <PlanPage
+                    origin={origin}
+                    setOrigin={setOrigin}
+                    destination={destination}
+                    setDestination={setDestination}
+                    mode={mode}
+                    selectMode={selectMode}
+                    computeResults={computeResults}
+                />
+              }
           />
 
-          <Route
-            path="/results"
-            element={
-              <ResultsPage
-                results={results}
-                best={best}
-              />
-            }
-          />
+          <Route path="/results" element={<ResultsPage results={results} />} />
 
-          <Route
-            path="/impact"
-            element={<ImpactPage impact={impact} />}
-          />
-
-          <Route path="*" element={<Navigate to="/plan" replace />} />
         </Routes>
       </main>
     </>
