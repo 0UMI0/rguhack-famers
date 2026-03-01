@@ -12,7 +12,7 @@ export default function PlanPage({
   selectMode,
   computeResults,
 
-  // ✅ NEW (from App.jsx)
+  // ✅ NEW (passed from App.jsx)
   user,
   onLogout,
 }) {
@@ -31,10 +31,15 @@ export default function PlanPage({
     navigate("/results");
   };
 
+  const handleLogout = () => {
+    onLogout?.();
+    // send user back to login page after logout
+    navigate("/login", { replace: true });
+  };
+
   return (
     <>
       <Hero />
-
       <section className="grid">
         <JourneyForm
           start={origin}
@@ -56,31 +61,17 @@ export default function PlanPage({
         </div>
       </section>
 
-      {/* ✅ Logout button fixed bottom-left */}
-      {user && (
+      {/* ✅ Fixed Logout button (bottom-left) */}
+      {user ? (
         <button
-          onClick={() => {
-            onLogout?.();
-            navigate("/plan"); // stays on plan; safe
-          }}
-          style={{
-            position: "fixed",
-            left: 18,
-            bottom: 18,
-            zIndex: 9999,
-            padding: "10px 14px",
-            borderRadius: 12,
-            border: "1px solid rgba(0,0,0,0.08)",
-            background: "white",
-            boxShadow: "0 8px 20px rgba(0,0,0,0.08)",
-            cursor: "pointer",
-            fontWeight: 600,
-          }}
+          type="button"
+          onClick={handleLogout}
+          className="logoutFab"
           title="Log out"
         >
           ⎋ Logout
         </button>
-      )}
+      ) : null}
     </>
   );
 }

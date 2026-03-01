@@ -275,22 +275,23 @@ export default function App() {
 
           {/* ✅ Protected routes */}
           <Route
-            path="/plan"
-            element={
-              <ProtectedRoute user={user}>
-                <PlanPage
-                  origin={origin}
-                  setOrigin={setOrigin}
-                  destination={destination}
-                  setDestination={setDestination}
-                  mode={mode}
-                  selectMode={selectMode}
-                  computeResults={computeResults}
-                />
-              </ProtectedRoute>
-            }
-          />
-
+  path="/plan"
+  element={
+    <ProtectedRoute user={user}>
+      <PlanPage
+        origin={origin}
+        setOrigin={setOrigin}
+        destination={destination}
+        setDestination={setDestination}
+        mode={mode}
+        selectMode={selectMode}
+        computeResults={computeResults}
+        user={user}
+        onLogout={logout}
+      />
+    </ProtectedRoute>
+  }
+/>
           <Route
             path="/results"
             element={
