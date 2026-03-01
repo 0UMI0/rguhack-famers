@@ -23,7 +23,7 @@ app.get("/directions", async (req, res) => {
 
     const response = await axios.get(
       "https://maps.googleapis.com/maps/api/directions/json",
-      { params: { origin, destination, mode, key: API_KEY } }
+      { params: { origin, destination, mode, key: 'AIzaSyDVZv1Oa7o5wgWUiDP5wUZA6Nd0PiAL6Vg' } }
     );
 
     const data = response.data;
