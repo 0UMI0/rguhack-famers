@@ -72,7 +72,7 @@ export default function Results({results}) {
             transition={{duration: 0.5, ease: "easeOut", delay: 0.1}}
         >
             <h2>Results</h2>
-            <div className="sub">Route options MET values</div>
+            <div className="sub">Route options | MET values</div>
 
             {/* Toggle */}
             <div className="toggleRow" style={{marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap"}}>

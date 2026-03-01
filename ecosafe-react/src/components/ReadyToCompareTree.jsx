@@ -1,6 +1,7 @@
 import {useEffect, useMemo, useState} from "react";
 import {motion} from "framer-motion";
 
+
 const STATS_KEY = "impact_stats_v1";
 
 function readJourneys() {
