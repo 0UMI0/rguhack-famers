@@ -129,6 +129,8 @@ export default function ImpactPage() {
   }, [selected, baseline, tripsPerWeek]);
 
   useEffect(() => {
+    document.title = "Impact | EcoSafe ";
+
     if (!impact) return;
 
     // Make a stable identifier for "this specific selection"

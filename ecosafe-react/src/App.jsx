@@ -1,6 +1,10 @@
 import {useState, useEffect} from "react";
 import {Routes, Route, Navigate, useLocation} from "react-router-dom";
 import "./App.css";
+import Navbar from "./components/Navbar";
+import PlanPage from "./pages/PlanPage";
+import ResultsPage from "./pages/ResultsPage";
+import ImpactPage from "./pages/ImpactPage.jsx";
 
 import {
     Chart as ChartJS, BarElement, CategoryScale, LinearScale, Tooltip,
@@ -8,11 +12,6 @@ import {
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip);
 
-import Navbar from "./components/Navbar";
-import PlanPage from "./pages/PlanPage";
-import ResultsPage from "./pages/ResultsPage";
-import ImpactPage from "./pages/ImpactPage.jsx";
-import Impact from "./components/Impact.jsx";
 
 const LABEL = {driving: "Car", transit: "Transit", bicycling: "Bike", walking: "Walk"};
 

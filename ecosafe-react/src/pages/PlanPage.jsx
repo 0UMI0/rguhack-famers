@@ -1,4 +1,4 @@
-import { useState } from "react";
+import {useEffect, useState} from "react";
 import { useNavigate } from "react-router-dom";
 import Hero from "../components/Hero";
 import JourneyForm from "../components/JourneyForm";
@@ -24,6 +24,10 @@ export default function PlanPage({
 
     navigate("/results");
   };
+
+  useEffect(() => {
+    document.title = "Plan | EcoSafe ";
+  }, []);
 
   return (
       <>
