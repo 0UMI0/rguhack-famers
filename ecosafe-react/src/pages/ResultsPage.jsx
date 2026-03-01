@@ -6,11 +6,6 @@ export default function ResultsPage({ results }) {
 
     return (
         <>
-            <div className="pageHead">
-                <h1>Results</h1>
-                <p className="sub">Route details from the backend.</p>
-            </div>
-
             <Results results={results} />
 
             <div className="footerRow">

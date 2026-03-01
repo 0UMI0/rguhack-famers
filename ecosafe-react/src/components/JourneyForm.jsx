@@ -12,8 +12,8 @@ export default function JourneyForm({
                                         setStart,
                                         end,
                                         setEnd,
-                                        mode,
-                                        selectMode,
+                                        //mode,
+                                        //selectMode,
                                         onCompare,
                                         loading = false,
                                         error = "",
@@ -51,31 +51,18 @@ export default function JourneyForm({
                 onChange={(e) => setEnd(e.target.value)}
             />
 
+
             <div className="lbl" style={{ marginTop: 14 }}>
-                Transport option{" "}
-                <span style={{ color: "var(--muted)", fontWeight: 800 }}>
-          ({MODE_META[mode]?.label || mode})
-        </span>
+                Transport options
             </div>
 
-            <div className="modes" role="group" aria-label="Transport modes">
-                {Object.keys(MODE_META).map((key) => {
-                    const active = key === mode;
-
-                    return (
-                        <button
-                            key={key}
-                            type="button"
-                            className={`chip ${active ? "active" : ""}`}
-                            onClick={() => selectMode(key)}
-                            aria-pressed={active}
-                            title={MODE_META[key].label}
-                        >
-                            <span aria-hidden="true">{MODE_META[key].emoji}</span>
-                            <span>{MODE_META[key].label}</span>
-                        </button>
-                    );
-                })}
+            <div className="modes" aria-label="Transport modes (read-only)">
+                {Object.keys(MODE_META).map((key) => (
+                    <div key={key} className="chip active">
+                        <span>{MODE_META[key].emoji}</span>
+                        <span>{MODE_META[key].label}</span>
+                    </div>
+                ))}
             </div>
 
             <button type="button" className="btn" onClick={onCompare} disabled={loading}>
