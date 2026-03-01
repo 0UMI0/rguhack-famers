@@ -15,22 +15,7 @@ function sustainabilityScore({ co2SavedKg, tripsPerWeek, kcalActive }) {
   return Math.round(100 * (0.5 * co2Norm + 0.3 * freqNorm + 0.2 * kcalNorm));
 }
 
-function buildAchievements({ selected, savedCo2Kg, kcalActive, score }) {
-  const a = [];
 
-  if (selected.mode === "walking") a.push({ key: "walker", emoji: "🚶", text: "Walker" });
-  if (selected.mode === "bicycling") a.push({ key: "cycler", emoji: "🚴", text: "Cyclist" });
-
-  if (savedCo2Kg >= 0.5) a.push({ key: "co2_05", emoji: "🌿", text: "0.5kg CO₂ saved" });
-  if (savedCo2Kg >= 1.0) a.push({ key: "co2_1", emoji: "🌍", text: "1kg CO₂ saved" });
-
-  if ((kcalActive ?? 0) >= 100) a.push({ key: "kcal_100", emoji: "🔥", text: "100 kcal burned" });
-  if ((kcalActive ?? 0) >= 200) a.push({ key: "kcal_200", emoji: "💪", text: "200 kcal burned" });
-
-  if (score >= 80) a.push({ key: "score_80", emoji: "🏆", text: "Impact score 80+" });
-
-  return a;
-}
 
 export default function ImpactPage() {
   const navigate = useNavigate();
@@ -50,8 +35,11 @@ export default function ImpactPage() {
         ? Math.max(0, (baseline.co2Kg ?? 0) - (selected.co2Kg ?? 0))
         : 0;
 
-    const treesEquivalent = savedCo2Kg > 0 ? savedCo2Kg / CO2_KG_PER_TREE_PER_YEAR : 0;
-
+    const annualSaved = savedCo2Kg * tripsPerWeek * 52;
+    const treesEquivalent =
+        annualSaved > 0
+            ? annualSaved / CO2_KG_PER_TREE_PER_YEAR
+            : 0;
     // For "health", use active calories rather than total sitting calories.
     // If you currently set car/transit kcal to 0, then selected.kcal is fine.
     const kcalActive =
@@ -68,7 +56,6 @@ export default function ImpactPage() {
           ? "Nice choice — this option reduces CO₂ compared with driving."
           : "This option is already very low carbon.";
 
-    const achievements = buildAchievements({ selected, savedCo2Kg, kcalActive, score });
 
     return {
       saved: savedCo2Kg.toFixed(2),
@@ -76,7 +63,6 @@ export default function ImpactPage() {
       totalKcal: kcalActive,
       score,
       rec,
-      achievements,
       mode: selected.mode,
       tripsPerWeek,
     };
