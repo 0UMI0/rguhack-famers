@@ -32,6 +32,35 @@ export default function App() {
   const [origin, setOrigin] = useState("Robert Gordon University");
   const [destination, setDestination] = useState("Union Street, Aberdeen");
 
+  // ✅ Gamification Stats (persisted)
+const [stats, setStats] = useState(() => {
+  const saved = localStorage.getItem("eco_stats");
+  return saved
+    ? JSON.parse(saved)
+    : {
+        journeys: 0,
+        totalKcal: 0,
+        totalCo2SavedKg: 0,
+        streak: 0,
+        lastSustainableDate: null,
+      };
+});
+
+useEffect(() => {
+  localStorage.setItem("eco_stats", JSON.stringify(stats));
+}, [stats]);
+
+const resetStats = () => {
+  const fresh = {
+    journeys: 0,
+    totalKcal: 0,
+    totalCo2SavedKg: 0,
+    streak: 0,
+    lastSustainableDate: null,
+  };
+  setStats(fresh);
+};
+
   const [mode, setMode] = useState("driving");
   const [results, setResults] = useState([]);
 
@@ -65,6 +94,28 @@ export default function App() {
     if (m) mins += Number.parseInt(m[1], 10);
     return mins;
   }
+
+const todayKey = () => new Date().toISOString().slice(0, 10);
+
+const updateStreak = (prev, sustainable) => {
+  if (!sustainable) return { ...prev, streak: 0 };
+
+  const today = todayKey();
+  if (prev.lastSustainableDate === today) return prev;
+
+  const yesterday = new Date(Date.now() - 86400000)
+    .toISOString()
+    .slice(0, 10);
+
+  const newStreak =
+    prev.lastSustainableDate === yesterday ? prev.streak + 1 : 1;
+
+  return {
+    ...prev,
+    streak: newStreak,
+    lastSustainableDate: today,
+  };
+};
 
   const computeResults = async () => {
     if (!origin.trim() || !destination.trim()) {
@@ -117,6 +168,53 @@ export default function App() {
       }
 
       setResults(successful);
+      // ✅ Update gamification stats after a successful comparison
+const baseline = successful.find((r) => r.mode === "driving") || null;
+
+// pick best green alternative (lowest CO2)
+const bestAlt = [...successful].sort((a, b) => a.co2Kg - b.co2Kg)[0];
+
+const savedKgThisTrip =
+  baseline && bestAlt ? Math.max(0, baseline.co2Kg - bestAlt.co2Kg) : 0;
+
+// pick calories from bestAlt (or 0)
+const kcalThisTrip = Math.max(0, Number(bestAlt?.kcal || 0));
+
+// sustainable = bestAlt is not driving AND you saved CO2
+const sustainable = bestAlt?.mode !== "driving" && savedKgThisTrip > 0;
+
+setStats((prev) => {
+  // streak logic
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+
+  let newStreak = prev.streak || 0;
+  let last = prev.lastSustainableDate;
+
+  if (sustainable) {
+    if (last === today) {
+      // already counted today
+      newStreak = prev.streak || 0;
+    } else if (last === yesterday) {
+      newStreak = (prev.streak || 0) + 1;
+    } else {
+      newStreak = 1;
+    }
+    last = today;
+  } else {
+    // If you want: reset streak when not sustainable
+    newStreak = 0;
+  }
+
+  return {
+    ...prev,
+    journeys: (prev.journeys || 0) + 1,
+    totalKcal: (prev.totalKcal || 0) + kcalThisTrip,
+    totalCo2SavedKg: +(Number(prev.totalCo2SavedKg || 0) + savedKgThisTrip).toFixed(2),
+    streak: newStreak,
+    lastSustainableDate: last,
+  };
+});
       return { ok: true };
     } catch {
       return { ok: false, msg: "Could not reach the server. Is Express running?" };
@@ -210,7 +308,7 @@ export default function App() {
           />
 
           {/* ✅ This fixes your blank impact page (route + prop) */}
-          <Route path="/impact" element={<ImpactPage impact={impact} />} />
+          <Route path="/impact" element={<ImpactPage impact={impact} stats={stats} />} />
 
           <Route path="*" element={<Navigate to="/plan" replace />} />
         </Routes>
