@@ -1,14 +1,241 @@
+import { useMemo, useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import Impact from "../components/Impact";
 
-export default function ImpactPage({ impact }) {
-  return (
-    <>
-      <div className="pageHead">
-        <h1>Impact</h1>
-        <p className="sub">Your CO₂ savings, health benefit, and score.</p>
-      </div>
+const CO2_KG_PER_TREE_PER_YEAR = 21;
+const STATS_KEY = "impact_stats_v1";
+const LAST_COUNTED_KEY = "impact_last_counted_v1";
 
-      <Impact impact={impact} />
-    </>
+const clamp01 = (x) => Math.max(0, Math.min(1, x));
+
+const fmtKg = (n) => `${Number(n || 0).toFixed(2)} kg`;
+const fmtInt = (n) => `${Math.round(Number(n || 0))}`;
+
+function loadStats() {
+  try {
+    const raw = localStorage.getItem(STATS_KEY);
+    return raw
+        ? JSON.parse(raw)
+        : {
+          journeys: 0,
+          totalKcal: 0,
+          totalCo2SavedKg: 0,
+          streak: 0,
+          lastSustainableDate: null,
+        };
+  } catch {
+    return {
+      journeys: 0,
+      totalKcal: 0,
+      totalCo2SavedKg: 0,
+      streak: 0,
+      lastSustainableDate: null,
+    };
+  }
+}
+
+function saveStats(next) {
+  localStorage.setItem(STATS_KEY, JSON.stringify(next));
+}
+
+function sustainabilityScore({ co2SavedKg, tripsPerWeek, kcalActive }) {
+  const co2Norm = clamp01(co2SavedKg / 2.0);
+  const freqNorm = clamp01(tripsPerWeek / 10);
+  const kcalNorm = clamp01((kcalActive ?? 0) / 300);
+
+  return Math.round(100 * (0.5 * co2Norm + 0.3 * freqNorm + 0.2 * kcalNorm));
+}
+
+function Badge({ title, desc, earned }) {
+  return (
+      <div
+          className="card"
+          style={{
+            padding: 14,
+            border: earned
+                ? "1px solid rgba(34,197,94,.35)"
+                : "1px solid rgba(148,163,184,.35)",
+            background: earned ? "rgba(34,197,94,.06)" : "rgba(2,6,23,.02)",
+            opacity: earned ? 1 : 0.75,
+          }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+          <div style={{ fontWeight: 700 }}>{title}</div>
+          <div
+              className="pillMini"
+              style={{ background: earned ? "" : "rgba(148,163,184,.2)" }}
+          >
+            {earned ? "Unlocked" : "Locked"}
+          </div>
+        </div>
+        <div className="sub" style={{ marginTop: 6 }}>
+          {desc}
+        </div>
+      </div>
+  );
+}
+
+export default function ImpactPage() {
+  const navigate = useNavigate();
+  const { state } = useLocation();
+
+  const selected = state?.selected || null;
+  const baseline = state?.baseline || null;
+  const tripsPerWeek = state?.tripsPerWeek ?? 2;
+
+  const [stats, setStats] = useState(loadStats);
+
+  const impact = useMemo(() => {
+    if (!selected) return null;
+
+    const savedCo2Kg =
+        baseline && selected.mode !== "driving"
+            ? Math.max(0, (baseline.co2Kg ?? 0) - (selected.co2Kg ?? 0))
+            : 0;
+
+    const annualSaved = savedCo2Kg * tripsPerWeek * 52;
+    const treesEquivalent =
+        annualSaved > 0 ? annualSaved / CO2_KG_PER_TREE_PER_YEAR : 0;
+
+    const kcalActive =
+        selected.mode === "walking" || selected.mode === "bicycling"
+            ? (selected.kcal ?? 0)
+            : 0;
+
+    const score = sustainabilityScore({
+      co2SavedKg: savedCo2Kg,
+      tripsPerWeek,
+      kcalActive,
+    });
+
+    const rec =
+        selected.mode === "driving"
+            ? "Try walking or cycling for short trips to reduce emissions and increase activity."
+            : savedCo2Kg > 0
+                ? "Nice choice — this option reduces CO₂ compared with driving."
+                : "This option is already very low carbon.";
+
+    return {
+      saved: savedCo2Kg.toFixed(2),
+      treesText: `${treesEquivalent.toFixed(2)} trees`,
+      totalKcal: kcalActive,
+      score,
+      rec,
+      mode: selected.mode,
+      tripsPerWeek,
+    };
+  }, [selected, baseline, tripsPerWeek]);
+
+  useEffect(() => {
+    if (!impact) return;
+
+    // Make a stable identifier for "this specific selection"
+    const selectedKey = `${impact.mode}|${impact.saved}|${impact.totalKcal}|${impact.tripsPerWeek}`;
+
+    const lastCounted = localStorage.getItem(LAST_COUNTED_KEY);
+    if (lastCounted === selectedKey) return; // already counted (prevents +2)
+
+    localStorage.setItem(LAST_COUNTED_KEY, selectedKey);
+
+    const saved = Number(impact.saved || 0);
+    const kcal = Number(impact.totalKcal || 0);
+    const today = new Date().toISOString().slice(0, 10);
+
+    setStats((prev) => {
+      const next = { ...prev };
+
+      next.journeys = Number(prev.journeys || 0) + 1;
+      next.totalKcal = Number(prev.totalKcal || 0) + kcal;
+      next.totalCo2SavedKg = Number(prev.totalCo2SavedKg || 0) + saved;
+
+      const last = prev.lastSustainableDate;
+      const isSustainable = saved > 0 || kcal > 0;
+
+      if (isSustainable && last !== today) {
+        const lastDate = last ? new Date(last) : null;
+        const diffDays = lastDate
+            ? Math.floor((new Date(today) - lastDate) / (1000 * 60 * 60 * 24))
+            : null;
+
+        next.streak = diffDays === 1 ? Number(prev.streak || 0) + 1 : 1;
+        next.lastSustainableDate = today;
+      }
+
+      saveStats(next);
+      return next;
+    });
+  }, [impact]);
+
+  // ✅ Achievements computed from stats (this is what you were missing)
+  const achievements = useMemo(() => {
+    const journeys = Number(stats.journeys || 0);
+    const kcal = Number(stats.totalKcal || 0);
+    const co2 = Number(stats.totalCo2SavedKg || 0);
+    const streak = Number(stats.streak || 0);
+
+    return [
+      {
+        id: "journeys5",
+        title: "🧭 5 Journeys Logged",
+        desc: `Complete 5 route comparisons. Current: ${fmtInt(journeys)} journeys.`,
+        earned: journeys >= 5,
+      },
+      {
+        id: "kcal1000",
+        title: "🔥 1,000 Calories Burned",
+        desc: `Burn 1,000 kcal through active travel. Current: ${fmtInt(kcal)} kcal.`,
+        earned: kcal >= 1000,
+      },
+      {
+        id: "co220",
+        title: "🌿 20kg CO₂ Saved",
+        desc: `Save 20kg CO₂ vs driving over time. Current: ${fmtKg(co2)}.`,
+        earned: co2 >= 20,
+      },
+      {
+        id: "streak3",
+        title: "✅ 3-Day Streak",
+        desc: `Log at least one low-carbon trip 3 days in a row. Current: ${fmtInt(
+            streak
+        )} days.`,
+        earned: streak >= 3,
+      },
+    ];
+  }, [stats]);
+
+  if (!selected) {
+    return (
+        <div className="card">
+          <h2>Impact Summary</h2>
+          <div className="sub">No journey selected. Go back and choose a route.</div>
+          <button className="btn" onClick={() => navigate("/results")}>
+            ← Back to results
+          </button>
+        </div>
+    );
+  }
+
+  return (
+      <>
+        <Impact impact={impact} />
+
+        {/* ✅ Achievements section */}
+        <div className="card" style={{ marginTop: 16 }}>
+          <h2 style={{ marginTop: 0 }}>Achievements</h2>
+          <div className="sub">These unlock based on your totals (saved in this browser).</div>
+
+          <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+            {achievements.map((a) => (
+                <Badge key={a.id} title={a.title} desc={a.desc} earned={a.earned} />
+            ))}
+          </div>
+        </div>
+
+        <div className="footerRow" style={{ marginTop: 16 }}>
+          <button className="btn" onClick={() => navigate("/results")}>
+            ← Back to results
+          </button>
+        </div>
+      </>
   );
 }

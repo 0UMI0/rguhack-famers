@@ -7,7 +7,7 @@ export default function Navbar() {
         <div className="brand">
           <div className="leaf">🍃</div>
           <div className="brandName">EcoSafe</div>
-          <div className="pill">Core29</div>
+          <div className="brandName">| Core29</div>
         </div>
 
         <nav className="nav">

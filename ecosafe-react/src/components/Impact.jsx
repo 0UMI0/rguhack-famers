@@ -45,6 +45,9 @@ export default function Impact({ impact }) {
           </div>
         </motion.div>
 
+
+        
+
         <div className="scoreCol">
           <motion.div
             className="ring"
