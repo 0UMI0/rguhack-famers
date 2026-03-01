@@ -71,7 +71,7 @@ export default function ReadyToCompareTree() {
             <div style={{display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline"}}>
                 <div>
                     <h2 style={{marginTop: 0, marginBottom: 6}}>Ready to compare?</h2>
-                    <div className="sub">Your eco tree grows as you log journeys.</div>
+                    <div className="sub">Your eco tree grows as you your log journeys.</div>
                 </div>
 
                 <div style={{textAlign: "right"}}>
