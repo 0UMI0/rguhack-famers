@@ -1,159 +1,195 @@
-import {useState, useEffect} from "react";
-import {Routes, Route, Navigate, useLocation} from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import "./App.css";
 import Navbar from "./components/Navbar";
 import PlanPage from "./pages/PlanPage";
 import ResultsPage from "./pages/ResultsPage";
 import ImpactPage from "./pages/ImpactPage.jsx";
+import LoginPage from "./pages/LoginPage";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 import {
-    Chart as ChartJS, BarElement, CategoryScale, LinearScale, Tooltip,
+  Chart as ChartJS,
+  BarElement,
+  CategoryScale,
+  LinearScale,
+  Tooltip,
 } from "chart.js";
 
 ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip);
 
-
-const LABEL = {driving: "Car", transit: "Transit", bicycling: "Bike", walking: "Walk"};
-
+const LABEL = {
+  driving: "Car",
+  transit: "Transit",
+  bicycling: "Bike",
+  walking: "Walk",
+};
 
 const AVERAGE_WEIGHT_KG = 75;
 
 const EMISSION_FACTORS = {
-    driving: 0.171,   // kg CO2 per km (average car)
-    transit: 0.089,   // kg CO2 per km (average bus/transit)
-    bicycling: 0, walking: 0,
+  driving: 0.171, // kg CO2 per km (average car)
+  transit: 0.089, // kg CO2 per km (average bus/transit)
+  bicycling: 0,
+  walking: 0,
 };
 
-
-//https://media.hypersites.com/clients/1235/filemanager/MHC/METs.pdf
+// https://media.hypersites.com/clients/1235/filemanager/MHC/METs.pdf
 const MET_VALUES = {
-    driving: 1.3, transit: 1.3, bicycling: 8.0, walking: 3.3,
+  driving: 1.3,
+  transit: 1.3,
+  bicycling: 8.0,
+  walking: 3.3,
 };
 
 // "12.3 km" -> 12.3, "800 m" -> 0.8
 function parseKm(distanceText) {
-    const t = (distanceText || "").toLowerCase().trim();
-    if (t.endsWith("km")) return Number.parseFloat(t);
-    if (t.endsWith("m")) return Number.parseFloat(t) / 1000;
-    return NaN;
-
+  const t = (distanceText || "").toLowerCase().trim();
+  if (t.endsWith("km")) return Number.parseFloat(t);
+  if (t.endsWith("m")) return Number.parseFloat(t) / 1000;
+  return NaN;
 }
 
 // "1 hour 10 mins" -> 70, "15 mins" -> 15
 function parseMinutes(durationText) {
-    const t = (durationText || "").toLowerCase();
-    let mins = 0;
-    const h = t.match(/(\d+)\s*hour/);
-    const m = t.match(/(\d+)\s*min/);
-    if (h) mins += Number.parseInt(h[1], 10) * 60;
-    if (m) mins += Number.parseInt(m[1], 10);
-    return mins;
+  const t = (durationText || "").toLowerCase();
+  let mins = 0;
+  const h = t.match(/(\d+)\s*hour/);
+  const m = t.match(/(\d+)\s*min/);
+  if (h) mins += Number.parseInt(h[1], 10) * 60;
+  if (m) mins += Number.parseInt(m[1], 10);
+  return mins;
 }
 
 function ScrollToTop() {
-    const {pathname} = useLocation();
-    useEffect(() => {
-        window.scrollTo({top: 0, behavior: "smooth"});
-    }, [pathname]);
-    return null;
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [pathname]);
+  return null;
 }
 
 export default function App() {
-    // Shared app state
-    const [origin, setOrigin] = useState("Robert Gordon University");
-    const [destination, setDestination] = useState("Union Street, Aberdeen");
+  // Shared app state
+  const [origin, setOrigin] = useState("Robert Gordon University");
+  const [destination, setDestination] = useState("Union Street, Aberdeen");
+  const [results, setResults] = useState([]);
 
+  const UI_MODE = {
+    driving: { label: "Car", emoji: "🚗" },
+    transit: { label: "Transit", emoji: "🚌" },
+    bicycling: { label: "Bike", emoji: "🚴" },
+    walking: { label: "Walk", emoji: "🚶" },
+  };
 
-    const [results, setResults] = useState([]);
-    // const [error, setError] = useState("");
+  const computeResults = async () => {
+    if (!origin.trim() || !destination.trim()) {
+      return { ok: false, msg: "Please enter both start and end locations." };
+    }
 
+    const modes = ["driving", "transit", "bicycling", "walking"];
 
-    const UI_MODE = {
-        driving: {label: "Car", emoji: "🚗"},
-        transit: {label: "Transit", emoji: "🚌"},
-        bicycling: {label: "Bike", emoji: "🚴"},
-        walking: {label: "Walk", emoji: "🚶"},
-    };
+    try {
+      const responses = await Promise.all(
+        modes.map(async (m) => {
+          const params = new URLSearchParams({ origin, destination, mode: m });
+          const res = await fetch(`/directions?${params.toString()}`);
+          const data = await res.json();
 
+          if (!res.ok) {
+            return { mode: m, ok: false, error: data?.error || "No route found" };
+          }
 
-    const computeResults = async () => {
-        if (!origin.trim() || !destination.trim()) {
-            return {ok: false, msg: "Please enter both start and end locations."};
-        }
+          const km = parseKm(data.distanceText);
+          const timeMin = parseMinutes(data.durationText);
 
-        const modes = ["driving", "transit", "bicycling", "walking"];
+          const co2Kg = Number.isFinite(km)
+            ? +(km * (EMISSION_FACTORS[m] ?? 0)).toFixed(2)
+            : 0;
 
-        try {
-            const responses = await Promise.all(modes.map(async (m) => {
-                const params = new URLSearchParams({origin, destination, mode: m});
-                const res = await fetch(`/directions?${params.toString()}`);
-                const data = await res.json();
+          const met = MET_VALUES[m] ?? 1;
+          const kcal = timeMin
+            ? Math.round(met * AVERAGE_WEIGHT_KG * (timeMin / 60))
+            : 0;
 
-                // If one mode fails (e.g., transit not available), return a structured failure for that mode
-                if (!res.ok) {
-                    return {mode: m, ok: false, error: data?.error || "No route found"};
-                }
+          return {
+            mode: m,
+            ok: true,
+            distanceText: data.distanceText,
+            durationText: data.durationText,
+            startAddress: data.startAddress,
+            endAddress: data.endAddress,
+            timeMin,
+            co2Kg,
+            kcal,
+          };
+        })
+      );
 
-                const km = parseKm(data.distanceText);
-                const timeMin = parseMinutes(data.durationText);
+      const successful = responses.filter((r) => r.ok);
+      if (successful.length === 0) {
+        const firstErr = responses.find((r) => !r.ok);
+        return { ok: false, msg: firstErr?.error || "No routes found." };
+      }
 
-                const co2Kg = Number.isFinite(km) ? +(km * (EMISSION_FACTORS[m] ?? 0)).toFixed(2) : 0;
+      setResults(successful);
+      return { ok: true };
+    } catch {
+      return { ok: false, msg: "Could not reach the server. Is Express running?" };
+    }
+  };
 
-                const met = MET_VALUES[m] ?? 1;
-                const kcal = timeMin ? Math.round(met * AVERAGE_WEIGHT_KG * (timeMin / 60)) : 0;
+  return (
+    <>
+      <Navbar />
+      <ScrollToTop />
 
-                return {
-                    mode: m,
-                    ok: true,
-                    distanceText: data.distanceText,
-                    durationText: data.durationText,
-                    startAddress: data.startAddress,
-                    endAddress: data.endAddress,
-                    timeMin,
-                    co2Kg,
-                    kcal,
+      <main className="wrap">
+        <Routes>
+          {/* Default route goes to login */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
 
-                };
-            }));
+          {/* Public route */}
+          <Route path="/login" element={<LoginPage />} />
 
-            const successful = responses.filter((r) => r.ok);
-            if (successful.length === 0) {
-                // show first failure message
-                const firstErr = responses.find((r) => !r.ok);
-                return {ok: false, msg: firstErr?.error || "No routes found."};
+          {/* Protected routes */}
+          <Route
+            path="/plan"
+            element={
+              <ProtectedRoute>
+                <PlanPage
+                  origin={origin}
+                  setOrigin={setOrigin}
+                  destination={destination}
+                  setDestination={setDestination}
+                  computeResults={computeResults}
+                />
+              </ProtectedRoute>
             }
+          />
 
-            setResults(successful);
+          <Route
+            path="/results"
+            element={
+              <ProtectedRoute>
+                <ResultsPage results={results} />
+              </ProtectedRoute>
+            }
+          />
 
-            return {ok: true};
-        } catch {
-            return {ok: false, msg: "Could not reach the server. Is Express running?"};
-        }
-    };
-    return (
+          <Route
+            path="/impact"
+            element={
+              <ProtectedRoute>
+                <ImpactPage />
+              </ProtectedRoute>
+            }
+          />
 
-        <>
-            <Navbar/>
-            <ScrollToTop/>
-
-            <main className="wrap">
-                <Routes>
-                    <Route path="/" element={<Navigate to="/plan" replace/>}/>
-
-                    <Route
-                        path="/plan"
-                        element={<PlanPage
-                            origin={origin}
-                            setOrigin={setOrigin}
-                            destination={destination}
-                            setDestination={setDestination}
-                            computeResults={computeResults}
-                        />}
-                    />
-
-                    <Route path="/results" element={<ResultsPage results={results}/>}/>
-                    <Route path="/impact" element={<ImpactPage />} />
-                </Routes>
-            </main>
-        </>);
+          {/* Any unknown route */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </main>
+    </>
+  );
 }
