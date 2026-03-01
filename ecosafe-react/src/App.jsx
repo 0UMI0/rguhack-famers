@@ -25,8 +25,10 @@ const EMISSION_FACTORS = {
     bicycling: 0, walking: 0,
 };
 
+
+//https://media.hypersites.com/clients/1235/filemanager/MHC/METs.pdf
 const MET_VALUES = {
-    driving: 1.3, transit: 1.3, bicycling: 8, walking: 3.5,
+    driving: 1.3, transit: 1.3, bicycling: 8.0, walking: 3.3,
 };
 
 // "12.3 km" -> 12.3, "800 m" -> 0.8
@@ -35,6 +37,7 @@ function parseKm(distanceText) {
     if (t.endsWith("km")) return Number.parseFloat(t);
     if (t.endsWith("m")) return Number.parseFloat(t) / 1000;
     return NaN;
+
 }
 
 // "1 hour 10 mins" -> 70, "15 mins" -> 15
