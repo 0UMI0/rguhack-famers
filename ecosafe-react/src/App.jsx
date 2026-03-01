@@ -11,6 +11,8 @@ ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip);
 import Navbar from "./components/Navbar";
 import PlanPage from "./pages/PlanPage";
 import ResultsPage from "./pages/ResultsPage";
+import ImpactPage from "./pages/ImpactPage.jsx";
+import Impact from "./components/Impact.jsx";
 
 const LABEL = {driving: "Car", transit: "Transit", bicycling: "Bike", walking: "Walk"};
 
@@ -148,7 +150,7 @@ export default function App() {
                     />
 
                     <Route path="/results" element={<ResultsPage results={results}/>}/>
-
+                    <Route path="/impact" element={<ImpactPage />} />
                 </Routes>
             </main>
         </>);

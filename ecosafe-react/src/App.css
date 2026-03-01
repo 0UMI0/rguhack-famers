@@ -9,6 +9,7 @@
   --radius:16px;
 }
 
+
 /* Header */
 .header{
   position:sticky;
@@ -264,6 +265,22 @@
   color: var(--green);
 }
 
+.pill {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pill.active {
+  background: var(--green);
+  color: white;
+  font-weight: 600;
+}
+
 /* Button */
 .btn{
   width:100%;
@@ -294,7 +311,16 @@
   justify-content:flex-end;
 }
 
+
 /* Results Cards */
+
+.modeCard[role="button"] {
+  cursor: pointer;
+}
+
+.modeCard[role="button"]:hover {
+  transform: translateY(-2px);
+}
 .cards{
   display:grid;
   grid-template-columns: repeat(4, 1fr);
