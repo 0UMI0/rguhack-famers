@@ -40,6 +40,9 @@ function saveStats(next) {
   localStorage.setItem(STATS_KEY, JSON.stringify(next));
 }
 
+
+
+
 function sustainabilityScore({ co2SavedKg, tripsPerWeek, kcalActive }) {
   const co2Norm = clamp01(co2SavedKg / 2.0);
   const freqNorm = clamp01(tripsPerWeek / 10);
@@ -166,6 +169,8 @@ export default function ImpactPage() {
       }
 
       saveStats(next);
+      //update tree
+      window.dispatchEvent(new Event("impact:statsUpdated"));
       return next;
     });
   }, [impact]);
@@ -268,6 +273,40 @@ export default function ImpactPage() {
           </motion.div>
         </motion.div>
 
+
+        {/* Route baseline recap */}
+        {baseline && (
+            <motion.div
+                className="card"
+                style={{ marginTop: 16 }}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
+            >
+              <h2 style={{ marginTop: 0 }}>Route baseline</h2>
+
+              <div className="sub">
+                This is the driving comparison used to calculate your impact.
+              </div>
+
+              <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+                <div className="impactRow">
+                  <span>Time</span>
+                  <b>{baseline.timeMin ?? "—"} mins</b>
+                </div>
+
+                <div className="impactRow">
+                  <span>Distance</span>
+                  <b>{baseline.distanceText ?? "—"}</b>
+                </div>
+
+                <div className="impactRow">
+                  <span>CO₂ emissions</span>
+                  <b>{Number(baseline.co2Kg ?? 0).toFixed(2)} kg</b>
+                </div>
+              </div>
+            </motion.div>
+        )}
         <div className="footerRow" style={{ marginTop: 16 }}>
           <button className="btn" onClick={() => navigate("/results")}>
             ← Back to results

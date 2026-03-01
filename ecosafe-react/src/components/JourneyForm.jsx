@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 
 const MODE_META = {
     driving: { label: "Car", emoji: "🚗" },
-    transit: { label: "Transit", emoji: "🚌" },
+    transit: { label: "Bus", emoji: "🚌" },
     bicycling: { label: "Bike", emoji: "🚴‍♀️" },
     walking: { label: "Walk", emoji: "🚶‍♀️" },
 };

@@ -3,7 +3,7 @@ import {Bar} from "react-chartjs-2";
 import {motion, AnimatePresence} from "framer-motion";
 import { useNavigate } from "react-router-dom";
 
-const LABEL = {driving: "Car", transit: "Transit", bicycling: "Bike", walking: "Walk"};
+const LABEL = {driving: "Car", transit: "Bus", bicycling: "Bike", walking: "Walk"};
 const EMOJI = {driving: "🚗", transit: "🚌", bicycling: "🚴", walking: "🚶"};
 
 export default function Results({results}) {

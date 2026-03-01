@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Hero from "../components/Hero";
 import JourneyForm from "../components/JourneyForm";
 import { motion } from "framer-motion";
+import ReadyToCompareTree from "../components/ReadyToCompareTree";
 export default function PlanPage({
                                    origin,
                                    setOrigin,
@@ -44,18 +45,14 @@ export default function PlanPage({
               error={error}
           />
 
-            <motion.div
-                className="card resultsHint"
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35, ease: "easeOut", delay: 0.06 }}
-            >
-                <h2>Ready to compare?</h2>
-                <div className="sub">
-                    Enter start and end locations, choose a travel mode, then click{" "}
-                    <b>Compare options</b>.
-                </div>
-            </motion.div>
+          <motion.div
+              className="card resultsHint"
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease: "easeOut", delay: 0.06 }}
+          >
+            <ReadyToCompareTree />
+          </motion.div>
         </section>
       </>
   );
