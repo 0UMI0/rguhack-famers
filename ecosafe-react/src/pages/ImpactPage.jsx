@@ -240,8 +240,15 @@ export default function ImpactPage() {
       <>
         <Impact impact={impact} />
 
+
         {/* Monthly projection */}
-        <div className="card" style={{ marginBottom: 16 }}>
+        <motion.div
+            className="card"
+            style={{ marginBottom: 16 }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, ease: "easeOut", delay: 0.05 }}
+        >
           <h2 style={{ marginTop: 0 }}>Monthly projection</h2>
           <div className="sub">
             Set how often you do this trip to estimate monthly impact.
@@ -278,7 +285,8 @@ export default function ImpactPage() {
               <b>{monthlyTrees.toFixed(2)} trees</b>
             </div>
           </div>
-        </div>
+
+        </motion.div>
 
         {/* Achievements */}
         <motion.div
