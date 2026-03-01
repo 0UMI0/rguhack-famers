@@ -16,6 +16,10 @@ import PlanPage from "./pages/PlanPage";
 import ResultsPage from "./pages/ResultsPage";
 import ImpactPage from "./pages/ImpactPage";
 
+// ✅ NEW: Login + route protection
+import LoginPage from "./pages/LoginPage";
+import ProtectedRoute from "./components/ProtectedRoute";
+
 const LABEL = { driving: "Car", transit: "Transit", bicycling: "Bike", walking: "Walk" };
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
@@ -28,43 +32,57 @@ function ScrollToTop() {
 }
 
 export default function App() {
-  // Shared app state
+  // ====== Auth session (persisted) ======
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem("eco_user");
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  useEffect(() => {
+    if (user) localStorage.setItem("eco_user", JSON.stringify(user));
+    else localStorage.removeItem("eco_user");
+  }, [user]);
+
+  const logout = () => setUser(null);
+
+  // ====== Route inputs ======
   const [origin, setOrigin] = useState("Robert Gordon University");
   const [destination, setDestination] = useState("Union Street, Aberdeen");
 
-  // ✅ Gamification Stats (persisted)
-const [stats, setStats] = useState(() => {
-  const saved = localStorage.getItem("eco_stats");
-  return saved
-    ? JSON.parse(saved)
-    : {
-        journeys: 0,
-        totalKcal: 0,
-        totalCo2SavedKg: 0,
-        streak: 0,
-        lastSustainableDate: null,
-      };
-});
+  // ====== Gamification Stats (persisted) ======
+  const [stats, setStats] = useState(() => {
+    const saved = localStorage.getItem("eco_stats");
+    return saved
+      ? JSON.parse(saved)
+      : {
+          journeys: 0,
+          totalKcal: 0,
+          totalCo2SavedKg: 0,
+          streak: 0,
+          lastSustainableDate: null,
+        };
+  });
 
-useEffect(() => {
-  localStorage.setItem("eco_stats", JSON.stringify(stats));
-}, [stats]);
+  useEffect(() => {
+    localStorage.setItem("eco_stats", JSON.stringify(stats));
+  }, [stats]);
 
-const resetStats = () => {
-  const fresh = {
-    journeys: 0,
-    totalKcal: 0,
-    totalCo2SavedKg: 0,
-    streak: 0,
-    lastSustainableDate: null,
+  const resetStats = () => {
+    const fresh = {
+      journeys: 0,
+      totalKcal: 0,
+      totalCo2SavedKg: 0,
+      streak: 0,
+      lastSustainableDate: null,
+    };
+    setStats(fresh);
   };
-  setStats(fresh);
-};
 
+  // ====== Results & preference ======
   const [mode, setMode] = useState("driving");
   const [results, setResults] = useState([]);
 
-  // ✅ Needed for toggle buttons to work
+  // ✅ Needed for toggle buttons to work (Fastest/Greenest/Healthiest)
   const [preference, setPreference] = useState("green"); // "fast" | "green" | "health"
 
   const selectMode = (m) => setMode(m);
@@ -95,28 +113,25 @@ const resetStats = () => {
     return mins;
   }
 
-const todayKey = () => new Date().toISOString().slice(0, 10);
+  const todayKey = () => new Date().toISOString().slice(0, 10);
 
-const updateStreak = (prev, sustainable) => {
-  if (!sustainable) return { ...prev, streak: 0 };
+  const updateStreak = (prev, sustainable) => {
+    if (!sustainable) return { ...prev, streak: 0 };
 
-  const today = todayKey();
-  if (prev.lastSustainableDate === today) return prev;
+    const today = todayKey();
+    if (prev.lastSustainableDate === today) return prev;
 
-  const yesterday = new Date(Date.now() - 86400000)
-    .toISOString()
-    .slice(0, 10);
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const newStreak = prev.lastSustainableDate === yesterday ? prev.streak + 1 : 1;
 
-  const newStreak =
-    prev.lastSustainableDate === yesterday ? prev.streak + 1 : 1;
-
-  return {
-    ...prev,
-    streak: newStreak,
-    lastSustainableDate: today,
+    return {
+      ...prev,
+      streak: newStreak,
+      lastSustainableDate: today,
+    };
   };
-};
 
+  // ====== Main: call Express backend and build comparison set ======
   const computeResults = async () => {
     if (!origin.trim() || !destination.trim()) {
       return { ok: false, msg: "Please enter both start and end locations." };
@@ -129,8 +144,8 @@ const updateStreak = (prev, sustainable) => {
         modes.map(async (m) => {
           const params = new URLSearchParams({ origin, destination, mode: m });
 
-          // ✅ Keep as-is if you have Vite proxy.
-          // If no proxy, change to: `http://localhost:3000/directions?...`
+          // ✅ Works if you have Vite proxy OR if you serve frontend behind same origin
+          // If you must call full URL: `http://localhost:3000/directions?...`
           const res = await fetch(`/directions?${params.toString()}`);
           const data = await res.json();
 
@@ -168,63 +183,38 @@ const updateStreak = (prev, sustainable) => {
       }
 
       setResults(successful);
-      // ✅ Update gamification stats after a successful comparison
-const baseline = successful.find((r) => r.mode === "driving") || null;
 
-// pick best green alternative (lowest CO2)
-const bestAlt = [...successful].sort((a, b) => a.co2Kg - b.co2Kg)[0];
+      // ✅ Update gamification stats on each compare
+      const car = successful.find((r) => r.mode === "driving") || null;
+      const bestAlt = [...successful].sort((a, b) => a.co2Kg - b.co2Kg)[0];
+      const savedKg = car ? Math.max(0, car.co2Kg - bestAlt.co2Kg) : 0;
 
-const savedKgThisTrip =
-  baseline && bestAlt ? Math.max(0, baseline.co2Kg - bestAlt.co2Kg) : 0;
+      const sustainable = bestAlt?.mode && bestAlt.mode !== "driving";
+      const bestActiveKcal =
+        sustainable ? (bestAlt.kcal || 0) : 0; // calories in the best alternative
 
-// pick calories from bestAlt (or 0)
-const kcalThisTrip = Math.max(0, Number(bestAlt?.kcal || 0));
+      setStats((prev) => {
+        const next = {
+          ...prev,
+          journeys: (prev.journeys || 0) + 1,
+          totalKcal: +(Number(prev.totalKcal || 0) + Number(bestActiveKcal || 0)).toFixed(0),
+          totalCo2SavedKg: +(
+            Number(prev.totalCo2SavedKg || 0) + Number(savedKg || 0)
+          ).toFixed(2),
+        };
+        return updateStreak(next, sustainable);
+      });
 
-// sustainable = bestAlt is not driving AND you saved CO2
-const sustainable = bestAlt?.mode !== "driving" && savedKgThisTrip > 0;
-
-setStats((prev) => {
-  // streak logic
-  const today = new Date().toISOString().slice(0, 10);
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-
-  let newStreak = prev.streak || 0;
-  let last = prev.lastSustainableDate;
-
-  if (sustainable) {
-    if (last === today) {
-      // already counted today
-      newStreak = prev.streak || 0;
-    } else if (last === yesterday) {
-      newStreak = (prev.streak || 0) + 1;
-    } else {
-      newStreak = 1;
-    }
-    last = today;
-  } else {
-    // If you want: reset streak when not sustainable
-    newStreak = 0;
-  }
-
-  return {
-    ...prev,
-    journeys: (prev.journeys || 0) + 1,
-    totalKcal: (prev.totalKcal || 0) + kcalThisTrip,
-    totalCo2SavedKg: +(Number(prev.totalCo2SavedKg || 0) + savedKgThisTrip).toFixed(2),
-    streak: newStreak,
-    lastSustainableDate: last,
-  };
-});
       return { ok: true };
     } catch {
       return { ok: false, msg: "Could not reach the server. Is Express running?" };
     }
   };
 
-  // ✅ Car baseline
+  // ====== Baseline (car) ======
   const car = useMemo(() => results.find((r) => r.mode === "driving") || null, [results]);
 
-  // ✅ Best option depends on preference (this powers the toggle buttons)
+  // ====== Best option depends on preference (toggle buttons) ======
   const best = useMemo(() => {
     if (!results.length) return null;
 
@@ -238,15 +228,13 @@ setStats((prev) => {
     return [...results].sort(sorter)[0];
   }, [results, preference]);
 
-  // ✅ Impact object for ImpactPage
+  // ====== Impact object for ImpactPage ======
   const impact = useMemo(() => {
     if (!results.length || !car) return null;
 
     const bestAlt = [...results].sort((a, b) => a.co2Kg - b.co2Kg)[0];
     const savedKg = Math.max(0, +(car.co2Kg - bestAlt.co2Kg).toFixed(2));
     const trees = savedKg > 0 ? Math.max(1, Math.round(savedKg / 2)) : 0;
-
-    const totalKcal = results.reduce((s, r) => s + (r.kcal || 0), 0);
 
     const activeKcal = results
       .filter((r) => r.mode === "walking" || r.mode === "bicycling")
@@ -268,49 +256,65 @@ setStats((prev) => {
         ? `If you choose ${bestAlt.label || LABEL[bestAlt.mode]} instead of driving twice a week, you could save about ${monthlySaved}kg CO₂ per month.`
         : `Try switching at least 2 trips/week to Transit/Bike/Walk to reduce CO₂ and improve health.`;
 
-    return { baseline: car, bestAlt, savedKg, trees, totalKcal, score, rec };
+    return { baseline: car, bestAlt, savedKg, trees, score, rec };
   }, [results, car]);
 
   return (
     <>
-      <Navbar />
+      {/* If your Navbar doesn't accept props, remove these props */}
+      <Navbar user={user} onLogout={logout} />
+
       <ScrollToTop />
 
       <main className="wrap">
         <Routes>
-          <Route path="/" element={<Navigate to="/plan" replace />} />
+          <Route path="/" element={<Navigate to={user ? "/plan" : "/login"} replace />} />
 
+          {/* ✅ Login route */}
+          <Route path="/login" element={<LoginPage onLogin={setUser} />} />
+
+          {/* ✅ Protected routes */}
           <Route
             path="/plan"
             element={
-              <PlanPage
-                origin={origin}
-                setOrigin={setOrigin}
-                destination={destination}
-                setDestination={setDestination}
-                mode={mode}
-                selectMode={selectMode}
-                computeResults={computeResults}
-              />
+              <ProtectedRoute user={user}>
+                <PlanPage
+                  origin={origin}
+                  setOrigin={setOrigin}
+                  destination={destination}
+                  setDestination={setDestination}
+                  mode={mode}
+                  selectMode={selectMode}
+                  computeResults={computeResults}
+                />
+              </ProtectedRoute>
             }
           />
 
           <Route
             path="/results"
             element={
-              <ResultsPage
-                results={results}
-                best={best}
-                preference={preference}
-                setPreference={setPreference}
-              />
+              <ProtectedRoute user={user}>
+                <ResultsPage
+                  results={results}
+                  best={best}
+                  preference={preference}
+                  setPreference={setPreference}
+                />
+              </ProtectedRoute>
             }
           />
 
-          {/* ✅ This fixes your blank impact page (route + prop) */}
-          <Route path="/impact" element={<ImpactPage impact={impact} stats={stats} />} />
+          <Route
+            path="/impact"
+            element={
+              <ProtectedRoute user={user}>
+                <ImpactPage impact={impact} stats={stats} resetStats={resetStats} />
+              </ProtectedRoute>
+            }
+          />
 
-          <Route path="*" element={<Navigate to="/plan" replace />} />
+          <Route path="*" element={<Navigate to={user ? "/plan" : "/login"} replace />} />
         </Routes>
       </main>
     </>
