@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import Impact from "../components/Impact";
 import { motion } from "framer-motion";
 
-
 const CO2_KG_PER_TREE_PER_YEAR = 21;
 const STATS_KEY = "impact_stats_v1";
 const LAST_COUNTED_KEY = "impact_last_counted_v1";
@@ -39,9 +38,6 @@ function loadStats() {
 function saveStats(next) {
   localStorage.setItem(STATS_KEY, JSON.stringify(next));
 }
-
-
-
 
 function sustainabilityScore({ co2SavedKg, tripsPerWeek, kcalActive }) {
   const co2Norm = clamp01(co2SavedKg / 2.0);
@@ -86,10 +82,14 @@ export default function ImpactPage() {
 
   const selected = state?.selected || null;
   const baseline = state?.baseline || null;
-  const tripsPerWeek = state?.tripsPerWeek ?? 2;
 
+  // User-controlled projection only (does NOT affect stats counting)
+  const [tripsPerWeek, setTripsPerWeek] = useState(state?.tripsPerWeek ?? 1);
+
+  // Persistent totals
   const [stats, setStats] = useState(loadStats);
 
+  // ✅ Per-trip impact only (stable when trips/week changes)
   const impact = useMemo(() => {
     if (!selected) return null;
 
@@ -98,18 +98,19 @@ export default function ImpactPage() {
             ? Math.max(0, (baseline.co2Kg ?? 0) - (selected.co2Kg ?? 0))
             : 0;
 
-    const annualSaved = savedCo2Kg * tripsPerWeek * 52;
+    // per-trip tree equivalent (keeps impact stable)
     const treesEquivalent =
-        annualSaved > 0 ? annualSaved / CO2_KG_PER_TREE_PER_YEAR : 0;
+        savedCo2Kg > 0 ? savedCo2Kg / CO2_KG_PER_TREE_PER_YEAR : 0;
 
     const kcalActive =
         selected.mode === "walking" || selected.mode === "bicycling"
-            ? (selected.kcal ?? 0)
+            ? selected.kcal ?? 0
             : 0;
 
+    // score per-trip (do not include trips/week)
     const score = sustainabilityScore({
       co2SavedKg: savedCo2Kg,
-      tripsPerWeek,
+      tripsPerWeek: 1,
       kcalActive,
     });
 
@@ -127,20 +128,20 @@ export default function ImpactPage() {
       score,
       rec,
       mode: selected.mode,
-      tripsPerWeek,
     };
-  }, [selected, baseline, tripsPerWeek]);
+  }, [selected, baseline]);
 
+  // ✅ Stats should only increment when the actual selected route/mode changes (not trips/week)
   useEffect(() => {
     document.title = "Impact | EcoSafe ";
 
     if (!impact) return;
 
-    // Make a stable identifier for "this specific selection"
-    const selectedKey = `${impact.mode}|${impact.saved}|${impact.totalKcal}|${impact.tripsPerWeek}`;
+    // stable key (no trips/week)
+    const selectedKey = `${impact.mode}|${impact.saved}|${impact.totalKcal}`;
 
     const lastCounted = localStorage.getItem(LAST_COUNTED_KEY);
-    if (lastCounted === selectedKey) return; // already counted (prevents +2)
+    if (lastCounted === selectedKey) return;
 
     localStorage.setItem(LAST_COUNTED_KEY, selectedKey);
 
@@ -169,13 +170,24 @@ export default function ImpactPage() {
       }
 
       saveStats(next);
-      //update tree
+
+      // update tree panel on plan page
       window.dispatchEvent(new Event("impact:statsUpdated"));
+
       return next;
     });
   }, [impact]);
 
-  // ✅ Achievements computed from stats (this is what you were missing)
+  // ✅ Monthly projection calculations (responds to trips/week)
+  const monthlyTrips = tripsPerWeek * (52 / 12); // ~4.33 weeks/month
+  const savedPerTrip = Number(impact?.saved ?? 0);
+  const kcalPerTrip = Number(impact?.totalKcal ?? 0);
+
+  const monthlyCo2Saved = savedPerTrip * monthlyTrips;
+  const monthlyKcal = kcalPerTrip * monthlyTrips;
+  const monthlyTrees = monthlyCo2Saved / CO2_KG_PER_TREE_PER_YEAR;
+
+  // Achievements from totals
   const achievements = useMemo(() => {
     const journeys = Number(stats.journeys || 0);
     const kcal = Number(stats.totalKcal || 0);
@@ -228,7 +240,47 @@ export default function ImpactPage() {
       <>
         <Impact impact={impact} />
 
-        {/*achievements*/}
+        {/* Monthly projection */}
+        <div className="card" style={{ marginBottom: 16 }}>
+          <h2 style={{ marginTop: 0 }}>Monthly projection</h2>
+          <div className="sub">
+            Set how often you do this trip to estimate monthly impact.
+          </div>
+
+          <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+            {[1, 2, 3, 5, 7].map((n) => (
+                <button
+                    key={n}
+                    className={`pill ${tripsPerWeek === n ? "active" : ""}`}
+                    onClick={() => setTripsPerWeek(n)}
+                    type="button"
+                >
+                  {n}× / week
+                </button>
+            ))}
+          </div>
+
+          <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+            <div className="impactRow">
+              <span>Monthly trips</span>
+              <b>{monthlyTrips.toFixed(1)}</b>
+            </div>
+            <div className="impactRow">
+              <span>Monthly CO₂ saved</span>
+              <b>{monthlyCo2Saved.toFixed(2)} kg</b>
+            </div>
+            <div className="impactRow">
+              <span>Monthly calories</span>
+              <b>{Math.round(monthlyKcal)} kcal</b>
+            </div>
+            <div className="impactRow">
+              <span>Monthly trees equivalent</span>
+              <b>{monthlyTrees.toFixed(2)} trees</b>
+            </div>
+          </div>
+        </div>
+
+        {/* Achievements */}
         <motion.div
             className="card"
             style={{ marginTop: 16 }}
@@ -273,7 +325,6 @@ export default function ImpactPage() {
           </motion.div>
         </motion.div>
 
-
         {/* Route baseline recap */}
         {baseline && (
             <motion.div
@@ -307,6 +358,7 @@ export default function ImpactPage() {
               </div>
             </motion.div>
         )}
+
         <div className="footerRow" style={{ marginTop: 16 }}>
           <button className="btn" onClick={() => navigate("/results")}>
             ← Back to results

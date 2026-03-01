@@ -48,22 +48,65 @@ export default function ReadyToCompareTree() {
     const leafCount = clamp(journeys, 0, maxLeaves);
 
     const stage = useMemo(() => {
-        if (journeys >= 30) return {label: "Flourishing", hint: "You’re building a strong habit."};
+        if (journeys >= 30) return {label: "Flourishing", hint: "You’re building a strong habit, Good job!"};
         if (journeys >= 10) return {label: "Growing", hint: "Keep comparing routes to unlock more leaves."};
         if (journeys >= 1) return {label: "Sprouting", hint: "Nice start — each journey grows the tree."};
         return {label: "Seedling", hint: "Compare a route to start growing your tree."};
     }, [journeys]);
 
     const leaves = useMemo(() => {
-        const positions = [
-            [58, 22, -12], [66, 26, 8], [50, 28, -4], [72, 34, 14], [44, 34, -18],
-            [60, 38, 6], [52, 40, -10], [70, 44, 16], [40, 44, -16], [58, 48, 10],
-            [48, 50, -8], [68, 52, 18], [38, 52, -14], [56, 56, 12], [46, 58, -6],
-            [66, 60, 20], [36, 60, -12], [54, 64, 10], [44, 66, -4], [64, 68, 18],
-            [34, 68, -10], [52, 72, 8], [42, 74, -2], [62, 76, 16], [32, 76, -8],
-            [50, 80, 6], [40, 82, 0], [60, 84, 14], [30, 84, -6], [56, 88, 10],
+        // Canopy tuning (adjust these if needed)
+        const cx = 50;  // centre x (line up with trunk)
+        const cy = 38;  // centre y (above trunk)
+        const rx = 22;  // canopy width
+        const ry = 20;  // canopy height
+
+        // Rings: outer to inner
+        const rings = [
+            { r: 1.0, step: 24 },  // outer: fewer leaves
+            { r: 0.78, step: 22 },
+            { r: 0.60, step: 18 }, // inner: more leaves
+            { r: 0.42, step: 16 }, // core: densest
         ];
-        return positions.slice(0, leafCount).map(([x, y, r], i) => ({x, y, r, i}));
+
+        const pts = [];
+        let i = 0;
+
+        for (const ring of rings) {
+            for (let a = -90; a < 270; a += ring.step) {
+                if (i >= leafCount) break;
+
+                const rad = (a * Math.PI) / 180;
+                const x = cx + Math.cos(rad) * rx * ring.r;
+                const y = cy + Math.sin(rad) * ry * ring.r;
+
+                pts.push({
+                    x: Number(x.toFixed(2)),
+                    y: Number(y.toFixed(2)),
+                    r: a + 90,
+                    i,
+                });
+                i++;
+            }
+            if (i >= leafCount) break;
+        }
+
+        // If we still have leaves left, pack the centre to avoid a "hole"
+        const centreSpots = [
+            [cx, cy, 0],
+            [cx - 4, cy + 2, -10],
+            [cx + 4, cy + 2, 10],
+            [cx - 3, cy - 3, -20],
+            [cx + 3, cy - 3, 20],
+        ];
+
+        for (const [x, y, r] of centreSpots) {
+            if (i >= leafCount) break;
+            pts.push({ x, y, r, i });
+            i++;
+        }
+
+        return pts;
     }, [leafCount]);
 
     return (
@@ -108,8 +151,9 @@ export default function ReadyToCompareTree() {
                             key={l.i}
                             cx={l.x}
                             cy={l.y}
-                            rx="6"
-                            ry="10"
+                            //leaves size
+                            rx="5"
+                            ry="15"
                             transform={`rotate(${l.r} ${l.x} ${l.y})`}
                             fill="rgba(34,197,94,.85)"
                             initial={{scale: 0, opacity: 0}}
