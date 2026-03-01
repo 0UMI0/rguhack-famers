@@ -16,11 +16,11 @@ export default function Impact({ impact }) {
       case "driving":
         return "Car";
       case "transit":
-        return "Transit";
+        return "Bus";
       case "walking":
-        return "Walk";
+        return "Walking";
       case "bicycling":
-        return "Bike";
+        return "Cycling";
       default:
         return mode || "—";
     }
