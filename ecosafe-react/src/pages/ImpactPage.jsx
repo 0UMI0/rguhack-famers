@@ -1,6 +1,8 @@
 import { useMemo, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Impact from "../components/Impact";
+import { motion } from "framer-motion";
+
 
 const CO2_KG_PER_TREE_PER_YEAR = 21;
 const STATS_KEY = "impact_stats_v1";
@@ -219,17 +221,50 @@ export default function ImpactPage() {
       <>
         <Impact impact={impact} />
 
-        {/* ✅ Achievements section */}
-        <div className="card" style={{ marginTop: 16 }}>
+        {/*achievements*/}
+        <motion.div
+            className="card"
+            style={{ marginTop: 16 }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+        >
           <h2 style={{ marginTop: 0 }}>Achievements</h2>
-          <div className="sub">These unlock based on your totals (saved in this browser).</div>
-
-          <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-            {achievements.map((a) => (
-                <Badge key={a.id} title={a.title} desc={a.desc} earned={a.earned} />
-            ))}
+          <div className="sub">
+            These unlock based on your totals (saved in this browser).
           </div>
-        </div>
+
+          <motion.div
+              style={{ marginTop: 10, display: "grid", gap: 10 }}
+              initial="hidden"
+              animate="show"
+              variants={{
+                hidden: {},
+                show: {
+                  transition: { staggerChildren: 0.08, delayChildren: 0.05 },
+                },
+              }}
+          >
+            {achievements.map((a) => (
+                <motion.div
+                    key={a.id}
+                    variants={{
+                      hidden: { opacity: 0, y: 10, scale: 0.98 },
+                      show: {
+                        opacity: 1,
+                        y: 0,
+                        scale: 1,
+                        transition: { duration: 0.25, ease: "easeOut" },
+                      },
+                    }}
+                    whileHover={{ y: -2 }}
+                    transition={{ type: "spring", stiffness: 350, damping: 26 }}
+                >
+                  <Badge title={a.title} desc={a.desc} earned={a.earned} />
+                </motion.div>
+            ))}
+          </motion.div>
+        </motion.div>
 
         <div className="footerRow" style={{ marginTop: 16 }}>
           <button className="btn" onClick={() => navigate("/results")}>
