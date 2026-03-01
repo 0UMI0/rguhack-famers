@@ -10,6 +10,22 @@ export default function Impact({ impact }) {
     };
   }, [impact]);
 
+
+  const modeLabel = (mode) => {
+    switch (mode) {
+      case "driving":
+        return "Car";
+      case "transit":
+        return "Transit";
+      case "walking":
+        return "Walk";
+      case "bicycling":
+        return "Bike";
+      default:
+        return mode || "—";
+    }
+  };
+
   return (
     <motion.section
       className="card"
@@ -27,6 +43,12 @@ export default function Impact({ impact }) {
           whileHover={{ y: -2 }}
           transition={{ type: "spring", stiffness: 400, damping: 28 }}
         >
+
+          <div className="impactRow">
+            <span>Selected mode</span>
+            <b>{impact ? modeLabel(impact.mode) : "—"}</b>
+          </div>
+
           <div className="impactRow">
             <span>CO₂ saved vs car</span>
             <b>{impact ? `${impact.saved} kg` : "—"}</b>
